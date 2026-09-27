@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-bg: #1A120B;
+    --color-secondary: #3E2723;
+    --color-gold: #C9A44C;
+    --color-cream: #F5E6C8;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-cream);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, .font-serif-brand {
+    font-family: 'Cinzel', Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1A120B;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3E2723;
+  border-radius: 4px;
+  border: 1px solid rgba(201, 164, 76, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #C9A44C;
+}
+
+/* Subtle Gold Gradient utility */
+.gold-text-gradient {
+  background: linear-gradient(135deg, #F5E6C8 0%, #C9A44C 50%, #E6CA85 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gold-border-gradient {
+  border-image: linear-gradient(135deg, rgba(201, 164, 76, 0.4), rgba(62, 39, 35, 0.2)) 1;
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
