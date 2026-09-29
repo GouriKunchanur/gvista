@@ -31,6 +31,18 @@ In accordance with product guidelines, the active MVP strictly supports three la
 
 ---
 
+## Deployment
+This repository currently contains only the frontend, so it can be deployed to Vercel.
+
+```bash
+npm install
+npm run build
+```
+
+Vercel uses `vercel.json` to build the app and serve React Router routes correctly. Authentication, profiles, enquiries, and contact submissions are currently UI-only and will need a backend or Firebase integration in Phase 2.
+
+---
+
 ## Project Structure
 ```text
 gvista/
