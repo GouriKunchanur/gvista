@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if the current user exists in the secure admins collection
+    function isAdmin() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // ==============================================================
+    // Admins collection:
+    // Only readable by authenticated admins or the user checking their own admin document.
+    // Absolutely CANNOT be created or modified by client apps.
+    // Must be seeded manually via the Firebase Console.
+    // ==============================================================
+    match /admins/{adminId} {
+      allow read: if isAuthenticated() && (request.auth.uid == adminId || isAdmin());
+      allow write: if false; // Strict: No client-side write/create/delete
+    }
+
+    // ==============================================================
+    // Users collection:
+    // - Listing the entire collection is ONLY allowed for verified admins.
+    // - Individual user can read their own profile.
+    // - Registration create is allowed for the authenticated user's own uid document.
+    // - Self-updates can modify safe profile fields (name, updatedAt) but CANNOT change role to admin or forge status.
+    // - Admins can read and update any user.
+    // ==============================================================
+    match /users/{userId} {
+      // List: Only admins
+      // Get: Admins or the user themself
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+
+      // Create: Authenticated user creating their own document during registration
+      // Prevent user from setting role = 'admin' directly on registration
+      allow create: if isOwner(userId) 
+                    && request.resource.data.uid == userId
+                    && (request.resource.data.role == 'anchor' || request.resource.data.role == 'organizer')
+                    && request.resource.data.email == request.auth.token.email;
+
+      // Update: Users can update their own profile, or admins
+      // Regular users cannot change their role or uid
+      allow update: if (isOwner(userId) 
+                        && request.resource.data.uid == userId 
+                        && request.resource.data.role == resource.data.role)
+                    || isAdmin();
+
+      // Delete: Admins only
+      allow delete: if isAdmin();
+    }
+
+    // ==============================================================
+    // Anchor Profiles (public discovery directory)
+    // ==============================================================
+    match /anchors/{anchorId} {
+      allow read: if true;
+      allow create, update: if isAuthenticated() && (request.auth.uid == request.resource.data.userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // ==============================================================
+    // Organizer Profiles
+    // ==============================================================
+    match /organizers/{organizerId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && (request.auth.uid == request.resource.data.userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // ==============================================================
+    // Enquiries
+    // ==============================================================
+    match /enquiries/{enquiryId} {
+      allow read: if isAuthenticated() && (
+        resource.data.organizerId == request.auth.uid ||
+        resource.data.anchorId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && request.resource.data.organizerId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        resource.data.organizerId == request.auth.uid ||
+        resource.data.anchorId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+  }
+}

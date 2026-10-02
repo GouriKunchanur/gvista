@@ -1,16 +1,56 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Mic2, Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Mic2, Lock, Mail, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth, isFirebaseConfigured } from '../lib/firebase';
 
 export const LoginPage: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [notice, setNotice] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const from = (location.state as any)?.from?.pathname || '/';
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Phase 1: Clean UI. In Phase 2 Firebase authentication handles actual login.
-    setNotice('Login UI ready. Real Firebase Authentication credentials handling is configured in Phase 2.');
+    setErrorMessage(null);
+
+    if (!isFirebaseConfigured) {
+      setErrorMessage(
+        'Firebase configuration is not detected. Please verify your VITE_FIREBASE_* environment variables.'
+      );
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+      navigate(from, { replace: true });
+    } catch (err: any) {
+      let message = 'Failed to sign in. Please verify your email and password.';
+      if (
+        err.code === 'auth/invalid-credential' ||
+        err.code === 'auth/wrong-password' ||
+        err.code === 'auth/user-not-found'
+      ) {
+        message = 'Invalid email address or password. Please check your credentials.';
+      } else if (err.code === 'auth/user-disabled') {
+        message = 'This account has been disabled. Please contact GVista support.';
+      } else if (err.code === 'auth/too-many-requests') {
+        message = 'Access temporarily disabled due to many failed attempts. Try again later or reset password.';
+      } else if (err.code === 'auth/network-request-failed') {
+        message = 'Network connection failed. Please check your network and try again.';
+      } else if (err.message) {
+        message = err.message;
+      }
+      setErrorMessage(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -33,10 +73,10 @@ export const LoginPage: React.FC = () => {
           </p>
         </div>
 
-        {notice && (
-          <div className="mb-6 p-3 rounded-xl bg-[#3E2723]/60 border border-[#C9A44C]/40 text-xs text-[#F5E6C8] flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-[#C9A44C] flex-shrink-0" />
-            <span>{notice}</span>
+        {errorMessage && (
+          <div className="mb-6 p-3 rounded-xl bg-red-950/50 border border-red-500/40 text-xs text-red-200 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+            <span>{errorMessage}</span>
           </div>
         )}
 
@@ -85,10 +125,20 @@ export const LoginPage: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-[#C9A44C] to-[#DFC27D] text-[#1A120B] font-bold text-sm shadow-gold-glow hover:brightness-105 transition-all flex items-center justify-center gap-2"
+            disabled={loading}
+            className="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-[#C9A44C] to-[#DFC27D] text-[#1A120B] font-bold text-sm shadow-gold-glow hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Sign In to GVista
-            <ArrowRight className="w-4 h-4" />
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              <>
+                Sign In to GVista
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </button>
         </form>
 
@@ -97,6 +147,12 @@ export const LoginPage: React.FC = () => {
           <Link to="/register" className="text-[#C9A44C] font-semibold hover:underline">
             Register here
           </Link>
+        </div>
+
+        <div className="mt-4 text-center">
+          <span className="text-[11px] text-[#F5E6C8]/40">
+            Secure authentication powered by Firebase.
+          </span>
         </div>
       </div>
     </div>
